@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RoomController;
+use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -14,6 +17,22 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+Route::get("healthcheck",function(){
+    return response()->json(["message" => "hi from sentinel"],200);
 });
+
+Route::post("register",[UserController::class,"register"]);
+Route::post("login",[UserController::class,"login"]);
+Route::get("get-users",[UserController::class,"getUsers"]);
+
+Route::middleware(["auth:sanctum"])->group(function(){
+    Route::post("logout",[UserController::class,"logout"]);
+    Route::post("onboard",[ProfileController::class,"onboard"]);
+});
+
+Route::middleware(["auth:sanctum","isOnboard"])->group(function(){
+    Route::post("create-room",[RoomController::class,"createRoom"]);
+});
+
+
+// todo: add in edit and delete functionality later if needed
