@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\UserController;
@@ -32,6 +33,7 @@ Route::middleware(["auth:sanctum"])->group(function(){
 
 Route::middleware(["auth:sanctum","isOnboard"])->group(function(){
     Route::post("create-room",[RoomController::class,"createRoom"]);
+    Route::post("message",[MessageController::class,"storeMessage"]);
 });
 
 

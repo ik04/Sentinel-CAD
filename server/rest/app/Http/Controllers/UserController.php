@@ -29,7 +29,7 @@ class UserController extends Controller
             $validated = $request->validated();
             $user = User::where("email",$validated["email"])->first();
             if(!Hash::check($validated["password"],$user->password)){
-                throw new IncorrectPasswordException(message:"Incorrect Password",code:400);
+                throw new IncorrectPasswordException(message:"Incorrect Password",code:401);
             }
             $userToken = $user->createToken("myusertoken")->plainTextToken;
             return response()->json(["user"=>$user,"user_token"=>$userToken],200)->withCookie(cookie()->forever('at',$userToken));
