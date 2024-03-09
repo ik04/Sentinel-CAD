@@ -17,9 +17,10 @@ use Ramsey\Uuid\Uuid;
 class MessageController extends Controller
 {
     public function storeMessage(CreateMessageRequest $request){
+        // edgecase both message and file sent togather
         try{
             $validated = $request->validated();
-            if(!($validated["message"] && $validated["message_file"])){
+            if(!($validated["message"] || $validated["message_file"])){
                 throw new EmptyMessageException(message:"Nothing sent in message",code:400);
             }
             $room = Room::select("id")->where("uuid",$validated["room_uuid"])->first();
@@ -28,7 +29,7 @@ class MessageController extends Controller
             }
             $roomId = $room->id;
             // add queue for validated data here
-            if($validated["message_file"]){
+            if(isset($validated["message_file"])){
                 // save image
                 $image = $request->file('message_file');
                 $extension = $image->getClientOriginalExtension();
@@ -37,7 +38,7 @@ class MessageController extends Controller
                 $url = Storage::url("messages/".$imageName);
                 $message = Message::create([
                     "user_id" => $request->user()->id,
-                    "room" => $roomId,
+                    "room_id" => $roomId,
                     "uuid" => Uuid::uuid4(),
                     "message" => $url,
                     "type" => EnumsMessage::IMAGE->value
@@ -47,13 +48,12 @@ class MessageController extends Controller
 
             $message = Message::create([
                 "user_id" => $request->user()->id,
-                "room" => $roomId,
+                "room_id" => $roomId,
                 "uuid" => Uuid::uuid4(),
                 "message" => $validated["message"],
                 "type" => EnumsMessage::TEXT->value
             ]);
             return response()->json(["message" => "Message Stored!","message" => $message]);
-            
         }catch(Exception $e){
             return response()->json(["error" => $e->getMessage()],$e->getCode());
         }

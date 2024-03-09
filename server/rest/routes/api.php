@@ -34,6 +34,8 @@ Route::middleware(["auth:sanctum"])->group(function(){
 Route::middleware(["auth:sanctum","isOnboard"])->group(function(){
     Route::post("create-room",[RoomController::class,"createRoom"]);
     Route::post("message",[MessageController::class,"storeMessage"]);
+    // for dev
+    Route::get("get-user-rooms",[RoomController::class,"getUserRooms"]);
 });
 
 

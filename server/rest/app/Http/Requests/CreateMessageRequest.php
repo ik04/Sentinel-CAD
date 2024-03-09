@@ -9,7 +9,7 @@ class CreateMessageRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "message" => "nullable|required|max:225",
+            "message" => "nullable|string|max:225",
             "message_file" => "nullable|image|mimes:png,jpeg,jpg",
             "room_uuid" => "uuid|required",
         ];
