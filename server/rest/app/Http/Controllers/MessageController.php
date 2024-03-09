@@ -18,9 +18,9 @@ class MessageController extends Controller
 {
     public function storeMessage(CreateMessageRequest $request){
         // edgecase both message and file sent togather
-        try{
+        // try{
             $validated = $request->validated();
-            if(!($validated["message"] || $validated["message_file"])){
+            if(!(isset($validated["message"]) || isset($validated["message_file"]))){
                 throw new EmptyMessageException(message:"Nothing sent in message",code:400);
             }
             $room = Room::select("id")->where("uuid",$validated["room_uuid"])->first();
@@ -54,9 +54,9 @@ class MessageController extends Controller
                 "type" => EnumsMessage::TEXT->value
             ]);
             return response()->json(["message" => "Message Stored!","message" => $message]);
-        }catch(Exception $e){
-            return response()->json(["error" => $e->getMessage()],$e->getCode());
-        }
+        // }catch(Exception $e){
+        //     return response()->json(["error" => $e->getMessage()],$e->getCode());
+        // }
             
 
 
