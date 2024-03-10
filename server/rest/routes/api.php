@@ -39,10 +39,13 @@ Route::middleware(["auth:sanctum"])->group(function(){
         return response()->noContent();
     });
     Route::post('/get-messages',[MessageController::class,'fetchMessages']);
-
+    
 });
 
 Route::middleware(["auth:sanctum","isOnboard"])->group(function(){
+    Route::post("/isOnboarded", function () {  
+        return response()->noContent();
+    });
 });
 
 

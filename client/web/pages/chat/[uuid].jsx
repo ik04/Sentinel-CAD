@@ -34,11 +34,7 @@ export default function Room(props) {
       if (resp.status === 200) {
         setRoom(resp.data.room_uuid); // used for sockets
         joinRoom(resp.data.room_uuid);
-        toast.promise(loadMessages(resp.data.room_uuid), {
-          loading: "Loading messages...",
-          success: <b>Messages Loaded!</b>,
-          error: <b>Could not Load Messages</b>,
-        });
+        loadMessages(resp.data.room_uuid);
       }
       setIsChat(true);
     } catch (error) {
