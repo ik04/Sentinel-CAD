@@ -6,6 +6,7 @@ use App\Enums\Message as EnumsMessage;
 use App\Exceptions\EmptyMessageException;
 use App\Exceptions\RoomNotFoundException;
 use App\Http\Requests\CreateMessageRequest;
+use App\Http\Requests\FetchMessagesRequest;
 use App\Models\Message;
 use App\Models\Room;
 use Exception;
@@ -18,7 +19,7 @@ class MessageController extends Controller
 {
     public function storeMessage(CreateMessageRequest $request){
         // edgecase both message and file sent togather
-        // try{
+        try{
             $validated = $request->validated();
             if(!(isset($validated["message"]) || isset($validated["message_file"]))){
                 throw new EmptyMessageException(message:"Nothing sent in message",code:400);
@@ -54,13 +55,23 @@ class MessageController extends Controller
                 "type" => EnumsMessage::TEXT->value
             ]);
             return response()->json(["message" => "Message Stored!","message" => $message]);
-        // }catch(Exception $e){
-        //     return response()->json(["error" => $e->getMessage()],$e->getCode());
-        // }
-            
-
-
-
+        }catch(Exception $e){
+            return response()->json(["error" => $e->getMessage()],$e->getCode());
+        }
     }
-    
+
+    public function fetchMessages(FetchMessagesRequest $request){
+        try{
+            $validated = $request->validated();
+            $room = Room::select("id")->where("uuid",$validated["room_uuid"])->first();
+            if(!$room){
+                throw new RoomNotFoundException(message:"Invalid room uuid, room not found", code:404);
+            }
+            $roomId = $room->id;
+            $messages = Message::join("users","messages.user_id","=","users.id")->where("room_id",$roomId)->get(["name","message","messages.uuid"]);
+            return response()->json($messages,200);
+        }catch(Exception $e){
+            return response()->json(["error" => $e->getMessage()],$e->getCode());
+        }
+    }
 }

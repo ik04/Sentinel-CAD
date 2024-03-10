@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\IncorrectPasswordException;
 use App\Http\Requests\LoginUserRequest;
 use App\Http\Requests\RegisterUserRequest;
+use App\Http\Requests\SearchUserRequest;
 use App\Models\User;
 use Exception;
 use Illuminate\Http\Request;
@@ -21,8 +22,7 @@ class UserController extends Controller
             "password" => Hash::make($validated["password"]),
             "uuid" => Uuid::uuid4()
         ]);
-        $userToken = $user->createToken("myusertoken")->plainTextToken;
-        return response()->json(["message" => "Account Created!","user"=>$user,"user_token"=>$userToken],200)->withCookie(cookie()->forever('at',$userToken));
+        return response()->json(["message" => "Account Created!","user"=>$user],200);
     }
     public function login(LoginUserRequest $request){
         try{
@@ -67,13 +67,41 @@ class UserController extends Controller
         return response() -> json([
             'email' => $user->email,
             'name' => $user->name,
-            'uuid' => $user->user_uuid,
-            'role' => $user->role,
+            'uuid' => $user->uuid,
+            'is_onboard' => $user->is_onboard,
             'access_token' => $request -> cookie('at'),
         ],200);
     }
     public function getUsers(){
         return response()->json(["users" => User::all()],200);
+    }
+    public function searchUsers(SearchUserRequest $request){
+        $validated = $request->validated();
+        if($request->has('search')){    
+            $users = User::select('name', 'uuid')
+            ->where(function ($query) use ($validated, $request) {
+                $query->where('name', 'LIKE', '%' . $validated['search'] . '%')
+                    ->orWhere('name', 'LIKE', '%' . $validated['search'] . '%');
+            })
+            ->where('id', '!=', $request->user()->id)
+            ->get();        
+            return response()->json($users,200);
+        }else{
+            $users = User::select('name','uuid')->where('id', '!=', $request->user()->id)
+            ->get();
+            return response()->json($users,200);
+        }
+    }
+    public function isUser(Request $request){
+        $fields = $request->validate([
+            'user_uuid' =>'uuid',
+        ]);
+        $check = User::where('uuid',$fields['user_uuid'])->first();
+        if($check){
+            return response()->json($check,200);
+        }else{
+            return response("user not found",404); 
+        }
     }
 
 

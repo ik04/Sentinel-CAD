@@ -53,12 +53,16 @@ class RoomController extends Controller
             return response()->json(["error" => $e->getMessage()],$e->getCode());
         }
         }
+public function getUserRooms(Request $request){
+    // Fetch user rooms
+    $userRooms = Room::join("members","members.room_id","=","rooms.id")
+                     ->select("rooms.uuid")
+                     ->where("members.user_id", $request->user()->id)
+                     ->get(); // Add get() to execute the query and fetch results
+    
+    // Return response
+    return response()->json(["rooms" => $userRooms]);
+}
 
-        public function getUserRooms(Request $request){
-            // for dev 
-            $userRooms = Room::join("members","members.room_id","=","members.id")->select("rooms.uuid")->where("members.user_id",$request->user()->id);
-            return response()->json(["rooms" => $userRooms]);
-
-        }
     }
     

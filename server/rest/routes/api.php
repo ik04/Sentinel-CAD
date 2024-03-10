@@ -25,18 +25,27 @@ Route::get("healthcheck",function(){
 Route::post("register",[UserController::class,"register"]);
 Route::post("login",[UserController::class,"login"]);
 Route::get("get-users",[UserController::class,"getUsers"]);
+Route::get("user-data",[UserController::class,"userData"]);
+Route::post('/is-user',[UserController::class,'isUser']);
 
 Route::middleware(["auth:sanctum"])->group(function(){
     Route::post("logout",[UserController::class,"logout"]);
     Route::post("onboard",[ProfileController::class,"onboard"]);
+    Route::post("search",[UserController::class,"searchUsers"]);
+    Route::post("message",[MessageController::class,"storeMessage"]); // shift after testing
+    Route::post("create-room",[RoomController::class,"createRoom"]); // shift after testing
+    Route::get("get-user-rooms",[RoomController::class,"getUserRooms"]); // for testing
+    Route::post("/isLog", function () {  
+        return response()->noContent();
+    });
+    Route::post('/get-messages',[MessageController::class,'fetchMessages']);
+
 });
 
 Route::middleware(["auth:sanctum","isOnboard"])->group(function(){
-    Route::post("create-room",[RoomController::class,"createRoom"]);
-    Route::post("message",[MessageController::class,"storeMessage"]);
-    // for dev
-    Route::get("get-user-rooms",[RoomController::class,"getUserRooms"]);
 });
 
 
+
 // todo: add in edit and delete functionality later if needed
+// todo: add routes for frontend and work userflow
