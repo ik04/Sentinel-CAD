@@ -24,24 +24,6 @@ class MessageController extends Controller
         return $base64Image;
     }
     
-    // Fetch function
-    public function postToCheckMessage($data){
-        $url = 'http://127.0.0.1/check-message?return_on_any_harmful=false&return_all_results=false';
-        $options = [
-            'http' => [
-                'header'  => "Content-Type: application/json\r\n",
-                'method'  => 'POST',
-                'content' => json_encode($data),
-            ],
-        ];
-        $context  = stream_context_create($options);
-        $result = file_get_contents($url, false, $context);
-        if ($result === false) {
-            return false; // Handle error
-        }
-        return $result;
-    }
-    
     public function storeMessage(CreateMessageRequest $request){
         // edgecase both message and file sent togather
         try{
@@ -54,17 +36,22 @@ class MessageController extends Controller
                 throw new RoomNotFoundException(message:"Invalid room uuid, room not found", code:404);
             }
             $roomId = $room->id;
-            // add queue for validated data here
+            $client = new Client();
             if(isset($validated["message_file"])){
                 // save image
                 $image = $request->file('message_file');
 
-                $client = new Client();
-                $response = $client->post();
                 $extension = $image->getClientOriginalExtension();
                 $imageName = 'message_' . time() . '_' . uniqid() . '.' . $extension;
                 Storage::disk('public')->put("/messages/".$imageName, file_get_contents($image));
                 $url = Storage::url("messages/".$imageName);
+                $publicPath = public_path($url);
+
+                $response = $client->post('https://127.0.0.1:5000/your-mom',[
+                    'form_params' => [
+                        "images" => $this->convertImageToBase64($publicPath)]
+                ]);
+
                 $message = Message::create([
                     "user_id" => $request->user()->id,
                     "room_id" => $roomId,
@@ -75,8 +62,11 @@ class MessageController extends Controller
                 return response()->json(["message" => "Message Stored!","message" => $message]);
             }
 
-            // post {text: "", images: base64(image)}
-            
+            $response = $client->post('https://127.0.0.1:5000/your-mom',[
+                'form_params' => [
+                    "text" => $validated["message"],
+                ]
+            ]);
 
             $message = Message::create([
                 "user_id" => $request->user()->id,
@@ -86,9 +76,30 @@ class MessageController extends Controller
                 "type" => EnumsMessage::TEXT->value
             ]);
             return response()->json(["message" => "Message Stored!","message" => $message]);
-        }catch(Exception $e){
+        }
+        catch(EmptyMessageException $e){
             return response()->json(["error" => $e->getMessage()],$e->getCode());
         }
+        catch(RoomNotFoundException $e){
+            return response()->json(["error" => $e->getMessage()],$e->getCode());
+        }
+        catch(Exception $e){
+        }
+    }
+
+    public function test(Request $request){
+        // edgecase both message and file sent togather
+                // save image
+                $image = $request->file('message_file');
+
+                $extension = $image->getClientOriginalExtension();
+                $imageName = 'message_' . time() . '_' . uniqid() . '.' . $extension;
+                Storage::disk('public')->put("/messages/".$imageName, file_get_contents($image));
+                $url = Storage::url("messages/".$imageName);
+                $publicPath = public_path($url);
+                $base64 = $this->convertImageToBase64($publicPath);
+   
+                return response()->json(["message" => $base64]);
     }
 
     public function fetchMessages(FetchMessagesRequest $request){
