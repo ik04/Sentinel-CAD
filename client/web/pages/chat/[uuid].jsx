@@ -41,7 +41,7 @@ export default function Room(props) {
   const roomChecks = async (e) => {
     e.preventDefault();
     try {
-      const checkRoomRecordLink = "http://localhost:8000/api/create-room";
+      const checkRoomRecordLink = "http://127.0.0.1:8000/api/create-room";
       const resp = await axios.post(checkRoomRecordLink, {
         recipient_uuid: uuid,
       });
@@ -64,7 +64,7 @@ export default function Room(props) {
   };
 
   const loadMessages = async (roomUuid) => {
-    const url = "http://localhost:8000/api/get-messages";
+    const url = "http://127.0.0.1:8000/api/get-messages";
 
     const resp = await axios.post(url, {
       room_uuid: roomUuid,
@@ -91,6 +91,7 @@ export default function Room(props) {
     socket = io();
     //* recieves
     socket.on("newIncomingMessage", (msg) => {
+      console.log(msg);
       setMessages((currentMsg) => [
         ...currentMsg,
         {
@@ -98,17 +99,19 @@ export default function Room(props) {
           user_id: msg.user_id,
           message: msg.message,
           room: msg.room,
+          type: msg.type,
         },
       ]);
     });
   };
   //* sends message
   const sendMessage = async (e) => {
-    const url = "http://localhost:8000/api/message";
+    const url = "http://127.0.0.1:8000/api/message";
     const resp = await axios.post(url, {
       room_uuid: room,
       message: message,
     });
+    console.log(userUuid, resp.data.message.type);
     await socket.emit("createdMessage", {
       author: name,
       message: message,
@@ -118,7 +121,13 @@ export default function Room(props) {
     });
     setMessages((currentMsg) => [
       ...currentMsg,
-      { author: name, user_id: userUuid, message: message, room: room },
+      {
+        author: name,
+        user_id: userUuid,
+        message: message,
+        room: room,
+        type: resp.data.message.type,
+      },
     ]);
     setMessage("");
   };
@@ -129,9 +138,10 @@ export default function Room(props) {
     formData.append("room_uuid", room);
     formData.append("message_file", imageFile);
 
-    const url = "http://localhost:8000/api/message";
+    const url = "http://127.0.0.1:8000/api/message";
     const resp = await axios.post(url, formData);
 
+    console.log(resp.data.message.type);
     await socket.emit("createdMessage", {
       author: name,
       message: resp.data.message.message,
@@ -146,12 +156,14 @@ export default function Room(props) {
         user_id: userUuid,
         message: resp.data.message.message,
         room: room,
+        type: resp.data.message.type,
       },
     ]);
+
     setImageFile(null);
     setIsImage(false);
   };
-
+  console.log(messages);
   const handleKeypress = (e) => {
     if (e.keyCode === 13) {
       if (message) {
@@ -192,7 +204,7 @@ export default function Room(props) {
               <div className="flex flex-col justify-end bg-white h-[20rem] min-w-[33%] rounded-md shadow-md ">
                 <div className="h-full last:border-b-0 overflow-y-scroll">
                   {messages.map((msg, i) => {
-                    if (msg.type == 0) {
+                    if (msg.type === 0) {
                       return (
                         <div
                           className="w-full py-1 px-2 border-b border-gray-200"
@@ -207,20 +219,20 @@ export default function Room(props) {
                           className="w-full py-1 px-2 border-b border-gray-200"
                           key={i}
                         >
-                          {msg.author} :{" "}
+                          {msg.author} :
                           {
                             <img
                               width={100}
                               height={100}
-                              src={`http://localhost:8000${msg.message}`}
-                              alt="o,age"
+                              src={`http://127.0.0.1:8000${msg.message}`}
+                              alt="why"
                             />
                           }
                         </div>
                       );
                     }
                   })}
-                  <div className="bg-red-200 w-full h-1">
+                  <div className="w-full h-1">
                     <div ref={messagesEndRef}></div>
                   </div>
                 </div>
@@ -282,7 +294,7 @@ export default function Room(props) {
   );
 }
 export async function getServerSideProps(context) {
-  const url = "http://localhost:8000/api/user-data";
+  const url = "http://127.0.0.1:8000/api/user-data";
   const cookie = context.req.cookies.at;
   const resp1 = await axios.get(url, { headers: { Cookie: `at=${cookie}` } });
   axios.defaults.headers.common[
@@ -294,7 +306,7 @@ export async function getServerSideProps(context) {
     const instance = axios.create({
       withCredentials: true,
     });
-    const url = "http://localhost:8000/api/isLog";
+    const url = "http://127.0.0.1:8000/api/isLog";
     const resp = await instance.post(url, {});
     if (resp.status !== 204) {
       return {
@@ -305,7 +317,7 @@ export async function getServerSideProps(context) {
       };
     }
     const uuid = context.params.uuid;
-    const url2 = "http://localhost:8000/api/is-user";
+    const url2 = "http://127.0.0.1:8000/api/is-user";
     const resp2 = await axios.post(url2, { user_uuid: uuid });
     if (resp2.status !== 200) {
       return {

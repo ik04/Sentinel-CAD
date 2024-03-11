@@ -20,6 +20,7 @@ def generateQueueKey(payload: dict):
     if payload.get("images"):
         key += ".image"
     if payload.get("text"):
+        key += ".text"
         if extract_links(payload["text"]):
             key += ".link"
         elif payload["text"].strip() != "":
@@ -62,7 +63,8 @@ services = [
         "types": ["message", "text"]
     },
     {"name": "image_detection", "categories": ["HARMFUL"], "types": ["message", "image"]},
-    {"name": "account_verification", "categories": ["is_valid"], "types": ["account"]},
+    {"name": "personal_info_detection", "types": ["message", "text"]},
+    # {"name": "account_verification", "categories": ["is_valid"], "types": ["account"]},
 ]
 
 

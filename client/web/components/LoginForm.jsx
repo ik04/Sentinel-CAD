@@ -6,7 +6,7 @@ import { Toaster, toast } from "react-hot-toast";
 const LoginForm = (props) => {
   const [password, setPassword] = useState("");
   const [email, setemail] = useState("");
-  const url = "http://localhost:8000/api/login";
+  const url = "http://127.0.0.1:8000/api/login";
   useEffect(() => {
     console.clear();
   });
