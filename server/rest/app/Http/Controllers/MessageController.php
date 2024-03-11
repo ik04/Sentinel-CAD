@@ -47,10 +47,10 @@ class MessageController extends Controller
                 $url = Storage::url("messages/".$imageName);
                 $publicPath = public_path($url);
 
-                $response = $client->post('https://127.0.0.1:5000/your-mom',[
-                    'form_params' => [
-                        "images" => $this->convertImageToBase64($publicPath)]
-                ]);
+                // $response = $client->post('https://127.0.0.1:5000/your-mom',[
+                //     'form_params' => [
+                //         "images" => $this->convertImageToBase64($publicPath)]
+                // ]);
 
                 $message = Message::create([
                     "user_id" => $request->user()->id,
@@ -62,11 +62,11 @@ class MessageController extends Controller
                 return response()->json(["message" => "Message Stored!","message" => $message]);
             }
 
-            $response = $client->post('https://127.0.0.1:5000/your-mom',[
-                'form_params' => [
-                    "text" => $validated["message"],
-                ]
-            ]);
+            // $response = $client->post('https://127.0.0.1:5000/your-mom',[
+            //     'form_params' => [
+            //         "text" => $validated["message"],
+            //     ]
+            // ]);
 
             $message = Message::create([
                 "user_id" => $request->user()->id,
