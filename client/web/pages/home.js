@@ -16,20 +16,20 @@ const home = () => {
 
 export default home;
 export async function getServerSideProps(context) {
-  const url = "http://localhost:8000/api/user-data";
-  const cookie = context.req.cookies.at;
-  const resp1 = await axios.get(url, { headers: { Cookie: `at=${cookie}` } });
-  axios.defaults.headers.common[
-    "Authorization"
-  ] = `Bearer ${resp1.data.access_token}`;
-  const email = resp1.data.email;
-
   try {
+    const url = "http://localhost:8000/api/user-data";
+    const cookie = context.req.cookies.at;
+    const resp1 = await axios.get(url, { headers: { Cookie: `at=${cookie}` } });
+    axios.defaults.headers.common[
+      "Authorization"
+    ] = `Bearer ${resp1.data.access_token}`;
+    const email = resp1.data.email;
+
     const instance = axios.create({
       withCredentials: true,
     });
-    const url = "http://localhost:8000/api/isLog";
-    const resp = await instance.post(url, {});
+    const url2 = "http://localhost:8000/api/isLog";
+    const resp = await instance.post(url2, {});
     if (resp.status !== 204) {
       return {
         redirect: {
