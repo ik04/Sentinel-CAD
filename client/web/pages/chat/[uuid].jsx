@@ -1,5 +1,5 @@
 import io from "socket.io-client";
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { useRouter } from "next/router";
 import { GlobalContext } from "@/context/GlobalContext";
 import axios from "axios";
@@ -18,6 +18,7 @@ export default function Room(props) {
   const [room, setRoom] = useState();
   const [imageFile, setImageFile] = useState(null);
   const [isImage, setIsImage] = useState(false);
+  const messagesEndRef = useRef(null);
 
   const router = useRouter();
   const { uuid } = router.query;
@@ -26,6 +27,16 @@ export default function Room(props) {
   useEffect(() => {
     socketInitializer();
   }, []);
+
+  const scrollToBottom = () => {
+    {
+      setTimeout(() => {
+        isChat && messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }, 50);
+    }
+  };
+
+  useEffect(scrollToBottom, [messages]);
 
   const roomChecks = async (e) => {
     e.preventDefault();
@@ -198,7 +209,7 @@ export default function Room(props) {
                         >
                           {msg.author} :{" "}
                           {
-                            <Image
+                            <img
                               width={100}
                               height={100}
                               src={`http://localhost:8000${msg.message}`}
@@ -209,6 +220,9 @@ export default function Room(props) {
                       );
                     }
                   })}
+                  <div className="bg-red-200 w-full h-1">
+                    <div ref={messagesEndRef}></div>
+                  </div>
                 </div>
                 <div className="border-t border-gray-300 w-full items-center flex rounded-bl-md">
                   <input
