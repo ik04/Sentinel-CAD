@@ -27,7 +27,7 @@ Route::post("login",[UserController::class,"login"]);
 Route::get("get-users",[UserController::class,"getUsers"]);
 Route::get("user-data",[UserController::class,"userData"]);
 Route::post('/is-user',[UserController::class,'isUser']);
-Route::post('/test',[MessageController::class,'test']);
+Route::get('/test',[MessageController::class,'test']);
 
 Route::middleware(["auth:sanctum"])->group(function(){
     Route::post("logout",[UserController::class,"logout"]);

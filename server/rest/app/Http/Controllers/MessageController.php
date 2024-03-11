@@ -26,7 +26,6 @@ class MessageController extends Controller
     }
     
     public function storeMessage(CreateMessageRequest $request){
-        // edgecase both message and file sent togather
         try{
             $validated = $request->validated();
             if(!(isset($validated["message"]) || isset($validated["message_file"]))){
@@ -47,16 +46,27 @@ class MessageController extends Controller
                 Storage::disk('public')->put("/messages/".$imageName, file_get_contents($image));
                 $url = Storage::url("messages/".$imageName);
                 $publicPath = public_path($url);
+                $imageContents = $this->convertImageToBase64($publicPath);
 
-                $response = $client->post('http://127.0.0.1:8001/api/test',[
-                    'form_params' => [
-                        "images" => $this->convertImageToBase64($publicPath)]
-                ]);
+                $client = new Client();
+                $jsonData = [
+                    "text" => "hi",
+                    "id" => "string",
+                    "image" => $imageContents
+                ];
+               $response = $client->post(env("FASTAPI_SERVER").'/check-message?return_on_any_harmful=false&return_all_results=false',[
+                            'json' => $jsonData
+                        ]);     
+                $data = json_decode($response->getBody(), true);
                 $response = ["services" => [
                     "link_detection" => true,
                     "image_detection" => true,
                     "profanity_detection" => true
                     ]];
+
+                    if($data["services"] || $data["services"]["link_detection"] || $data["services"]["profanity"]){
+                        throw new FlagMessageException(message:"Your Message Has Been Flagged",code:409);
+                    }
 
                 $message = Message::create([
                     "user_id" => $request->user()->id,
@@ -68,21 +78,20 @@ class MessageController extends Controller
                 return response()->json(["message" => "Message Stored!","message" => $message]);
             }
 
-            $response = $client->post('http://127.0.0.1:8001/api/test',[
-                'form_params' => [
-                    "text" => $validated["message"],
-                ]
-            ]);
-            $response = ["services" => [
-                "link_detection" => true,
-                "image_detection" => true,
-                "profanity_detection" => true
-                ]];
-            if($response["services"] || $response["services"]["link_detection"] || $response["services"]["profanity"]){
-                throw new FlagMessageException(message:"Your Message Has Been Flagged",code:400);
+            $client = new Client();
+            $jsonData = [
+                "text" => $validated["message"],
+                "id" => "string",
+                "image" => true
+            ];
+           $response = $client->post(env("FASTAPI_SERVER").'/check-message?return_on_any_harmful=false&return_all_results=false',[
+                        'json' => $jsonData
+                    ]);     
+            $data = json_decode($response->getBody(), true);
+        
+            if($data["services"] || $data["services"]["link_detection"] || $data["services"]["profanity"]){
+                throw new FlagMessageException(message:"Your Message Has Been Flagged",code:409);
             }
-
-
             $message = Message::create([
                 "user_id" => $request->user()->id,
                 "room_id" => $roomId,
@@ -107,9 +116,17 @@ class MessageController extends Controller
 
     public function test(Request $request){
         $client = new Client();
-        $response = $client->get('http://127.0.0.1:8001/api/test');
-        return response()->json();
-                        }
+        $jsonData = [
+            "text" => "kill me",
+            "id" => "string",
+            "image" => true
+        ];
+       $response = $client->post(env("FASTAPI_SERVER").'/check-message?return_on_any_harmful=false&return_all_results=false',[
+                    'json' => $jsonData
+                ]);     
+                $data = json_decode($response->getBody(), true);
+        return response()->json(["data" => $data]);
+    }
 
     public function fetchMessages(FetchMessagesRequest $request){
         try{
