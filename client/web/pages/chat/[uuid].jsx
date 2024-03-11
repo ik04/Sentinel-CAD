@@ -41,7 +41,7 @@ export default function Room(props) {
   const roomChecks = async (e) => {
     e.preventDefault();
     try {
-      const checkRoomRecordLink = "http://localhost:8000/api/create-room";
+      const checkRoomRecordLink = "http://127.0.0.1:8000/api/create-room";
       const resp = await axios.post(checkRoomRecordLink, {
         recipient_uuid: uuid,
       });
@@ -64,7 +64,7 @@ export default function Room(props) {
   };
 
   const loadMessages = async (roomUuid) => {
-    const url = "http://localhost:8000/api/get-messages";
+    const url = "http://127.0.0.1:8000/api/get-messages";
 
     const resp = await axios.post(url, {
       room_uuid: roomUuid,
@@ -106,7 +106,7 @@ export default function Room(props) {
   };
   //* sends message
   const sendMessage = async (e) => {
-    const url = "http://localhost:8000/api/message";
+    const url = "http://127.0.0.1:8000/api/message";
     const resp = await axios.post(url, {
       room_uuid: room,
       message: message,
@@ -138,7 +138,7 @@ export default function Room(props) {
     formData.append("room_uuid", room);
     formData.append("message_file", imageFile);
 
-    const url = "http://localhost:8000/api/message";
+    const url = "http://127.0.0.1:8000/api/message";
     const resp = await axios.post(url, formData);
 
     console.log(resp.data.message.type);
@@ -224,7 +224,7 @@ export default function Room(props) {
                             <img
                               width={100}
                               height={100}
-                              src={`http://localhost:8000${msg.message}`}
+                              src={`http://127.0.0.1:8000${msg.message}`}
                               alt="why"
                             />
                           }
@@ -294,7 +294,7 @@ export default function Room(props) {
   );
 }
 export async function getServerSideProps(context) {
-  const url = "http://localhost:8000/api/user-data";
+  const url = "http://127.0.0.1:8000/api/user-data";
   const cookie = context.req.cookies.at;
   const resp1 = await axios.get(url, { headers: { Cookie: `at=${cookie}` } });
   axios.defaults.headers.common[
@@ -306,7 +306,7 @@ export async function getServerSideProps(context) {
     const instance = axios.create({
       withCredentials: true,
     });
-    const url = "http://localhost:8000/api/isLog";
+    const url = "http://127.0.0.1:8000/api/isLog";
     const resp = await instance.post(url, {});
     if (resp.status !== 204) {
       return {
@@ -317,7 +317,7 @@ export async function getServerSideProps(context) {
       };
     }
     const uuid = context.params.uuid;
-    const url2 = "http://localhost:8000/api/is-user";
+    const url2 = "http://127.0.0.1:8000/api/is-user";
     const resp2 = await axios.post(url2, { user_uuid: uuid });
     if (resp2.status !== 200) {
       return {

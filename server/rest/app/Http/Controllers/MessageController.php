@@ -10,6 +10,7 @@ use App\Http\Requests\FetchMessagesRequest;
 use App\Models\Message;
 use App\Models\Room;
 use Exception;
+use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use League\CommonMark\Extension\CommonMark\Node\Inline\Code;
@@ -57,8 +58,9 @@ class MessageController extends Controller
             if(isset($validated["message_file"])){
                 // save image
                 $image = $request->file('message_file');
-                
 
+                $client = new Client();
+                $response = $client->post();
                 $extension = $image->getClientOriginalExtension();
                 $imageName = 'message_' . time() . '_' . uniqid() . '.' . $extension;
                 Storage::disk('public')->put("/messages/".$imageName, file_get_contents($image));
