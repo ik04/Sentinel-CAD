@@ -5,6 +5,7 @@ import { GlobalContext } from "@/context/GlobalContext";
 import axios from "axios";
 import Navbar from "@/components/Navbar";
 import { Toaster, toast } from "react-hot-toast";
+import Image from "next/image";
 
 let socket;
 
@@ -15,6 +16,8 @@ export default function Room(props) {
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState([]);
   const [room, setRoom] = useState();
+  const [imageFile, setImageFile] = useState(null);
+  const [isImage, setIsImage] = useState(false);
 
   const router = useRouter();
   const { uuid } = router.query;
@@ -41,7 +44,6 @@ export default function Room(props) {
       if (error.response.status === 403) {
         location.href = "/home";
       } else {
-        console.log(error);
       }
     }
   };
@@ -67,6 +69,7 @@ export default function Room(props) {
           author: message.name,
           message: message.message,
           room: roomUuid,
+          type: message.type,
         },
       ]);
     });
@@ -90,24 +93,52 @@ export default function Room(props) {
   };
   //* sends message
   const sendMessage = async (e) => {
+    const url = "http://localhost:8000/api/message";
+    const resp = await axios.post(url, {
+      room_uuid: room,
+      message: message,
+    });
     await socket.emit("createdMessage", {
       author: name,
       message: message,
       room: room,
       user_id: userUuid,
+      type: resp.data.message.type,
     });
     setMessages((currentMsg) => [
       ...currentMsg,
       { author: name, user_id: userUuid, message: message, room: room },
     ]);
+    setMessage("");
+  };
+  const sendImageMessage = async () => {
+    if (!imageFile) return;
+
+    const formData = new FormData();
+    formData.append("room_uuid", room);
+    formData.append("message_file", imageFile);
 
     const url = "http://localhost:8000/api/message";
-    console.log(room);
-    const resp = await axios.post(url, {
-      room_uuid: room,
-      message: message,
+    const resp = await axios.post(url, formData);
+
+    await socket.emit("createdMessage", {
+      author: name,
+      message: resp.data.message.message,
+      room: room,
+      user_id: userUuid,
+      type: resp.data.message.type,
     });
-    setMessage("");
+    setMessages((currentMsg) => [
+      ...currentMsg,
+      {
+        author: name,
+        user_id: userUuid,
+        message: resp.data.message.message,
+        room: room,
+      },
+    ]);
+    setImageFile(null);
+    setIsImage(false);
   };
 
   const handleKeypress = (e) => {
@@ -116,6 +147,16 @@ export default function Room(props) {
         sendMessage();
       }
     }
+  };
+
+  const handleFileChange = (e) => {
+    setImageFile(e.target.files[0]);
+    setIsImage(true);
+  };
+
+  const handleTextChange = (e) => {
+    setIsImage(false);
+    setMessage(e.target.value);
   };
   return (
     <div className="overflow-y-hidden">
@@ -140,36 +181,83 @@ export default function Room(props) {
               <div className="flex flex-col justify-end bg-white h-[20rem] min-w-[33%] rounded-md shadow-md ">
                 <div className="h-full last:border-b-0 overflow-y-scroll">
                   {messages.map((msg, i) => {
-                    return (
-                      <div
-                        className="w-full py-1 px-2 border-b border-gray-200"
-                        key={i}
-                      >
-                        {msg.author} : {msg.message}
-                      </div>
-                    );
+                    if (msg.type == 0) {
+                      return (
+                        <div
+                          className="w-full py-1 px-2 border-b border-gray-200"
+                          key={i}
+                        >
+                          {msg.author} : {msg.message}
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div
+                          className="w-full py-1 px-2 border-b border-gray-200"
+                          key={i}
+                        >
+                          {msg.author} :{" "}
+                          {
+                            <Image
+                              width={100}
+                              height={100}
+                              src={`http://localhost:8000${msg.message}`}
+                              alt="o,age"
+                            />
+                          }
+                        </div>
+                      );
+                    }
                   })}
                 </div>
-                <div className="border-t border-gray-300 w-full flex rounded-bl-md">
+                <div className="border-t border-gray-300 w-full items-center flex rounded-bl-md">
                   <input
                     type="text"
                     placeholder="New message..."
                     value={message}
                     className="outline-none py-2 px-2 rounded-bl-md flex-1"
-                    onChange={(e) => setMessage(e.target.value)}
+                    onChange={handleTextChange}
                     onKeyUp={handleKeypress}
                     required
                   />
-                  <div className="border-l border-gray-300 flex justify-center items-center  rounded-br-md group hover:bg-purple-500 transition-all">
-                    <button
-                      className="group-hover:text-white px-3 h-full"
-                      onClick={(e) => {
-                        sendMessage();
-                      }}
+                  <div>
+                    <label
+                      htmlFor="file-upload"
+                      className="group-hover:text-white px-3 h-full  cursor-pointer"
                     >
-                      Send
-                    </button>
+                      Upload Image
+                    </label>
+                    <input
+                      id="file-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
                   </div>
+                  {isImage ? (
+                    <div className="border-l border-gray-300 flex justify-center items-center  rounded-br-md group hover:bg-purple-500 transition-all">
+                      <button
+                        className="group-hover:text-white px-3 h-full"
+                        onClick={(e) => {
+                          sendImageMessage();
+                        }}
+                      >
+                        SendI
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border-l border-gray-300 flex justify-center items-center  rounded-br-md group hover:bg-purple-500 transition-all">
+                      <button
+                        className="group-hover:text-white px-3 h-full"
+                        onClick={(e) => {
+                          sendMessage();
+                        }}
+                      >
+                        Send
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </>

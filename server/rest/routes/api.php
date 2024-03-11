@@ -48,7 +48,5 @@ Route::middleware(["auth:sanctum","isOnboard"])->group(function(){
     });
 });
 
-
-
 // todo: add in edit and delete functionality later if needed
 // todo: add routes for frontend and work userflow
