@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\Message as EnumsMessage;
 use App\Exceptions\EmptyMessageException;
+use App\Exceptions\FlagMessageException;
 use App\Exceptions\RoomNotFoundException;
 use App\Http\Requests\CreateMessageRequest;
 use App\Http\Requests\FetchMessagesRequest;
@@ -47,10 +48,15 @@ class MessageController extends Controller
                 $url = Storage::url("messages/".$imageName);
                 $publicPath = public_path($url);
 
-                // $response = $client->post('https://127.0.0.1:5000/your-mom',[
-                //     'form_params' => [
-                //         "images" => $this->convertImageToBase64($publicPath)]
-                // ]);
+                $response = $client->post('http://127.0.0.1:8001/api/test',[
+                    'form_params' => [
+                        "images" => $this->convertImageToBase64($publicPath)]
+                ]);
+                $response = ["services" => [
+                    "link_detection" => true,
+                    "image_detection" => true,
+                    "profanity_detection" => true
+                    ]];
 
                 $message = Message::create([
                     "user_id" => $request->user()->id,
@@ -62,11 +68,20 @@ class MessageController extends Controller
                 return response()->json(["message" => "Message Stored!","message" => $message]);
             }
 
-            // $response = $client->post('https://127.0.0.1:5000/your-mom',[
-            //     'form_params' => [
-            //         "text" => $validated["message"],
-            //     ]
-            // ]);
+            $response = $client->post('http://127.0.0.1:8001/api/test',[
+                'form_params' => [
+                    "text" => $validated["message"],
+                ]
+            ]);
+            $response = ["services" => [
+                "link_detection" => true,
+                "image_detection" => true,
+                "profanity_detection" => true
+                ]];
+            if($response["services"] || $response["services"]["link_detection"] || $response["services"]["profanity"]){
+                throw new FlagMessageException(message:"Your Message Has Been Flagged",code:400);
+            }
+
 
             $message = Message::create([
                 "user_id" => $request->user()->id,
@@ -83,24 +98,18 @@ class MessageController extends Controller
         catch(RoomNotFoundException $e){
             return response()->json(["error" => $e->getMessage()],$e->getCode());
         }
+        catch(FlagMessageException $e){
+            return response()->json(["error" => $e->getMessage()],$e->getCode());
+        }
         catch(Exception $e){
         }
     }
 
     public function test(Request $request){
-        // edgecase both message and file sent togather
-                // save image
-                $image = $request->file('message_file');
-
-                $extension = $image->getClientOriginalExtension();
-                $imageName = 'message_' . time() . '_' . uniqid() . '.' . $extension;
-                Storage::disk('public')->put("/messages/".$imageName, file_get_contents($image));
-                $url = Storage::url("messages/".$imageName);
-                $publicPath = public_path($url);
-                $base64 = $this->convertImageToBase64($publicPath);
-   
-                return response()->json(["message" => $base64]);
-    }
+        $client = new Client();
+        $response = $client->get('http://127.0.0.1:8001/api/test');
+        return response()->json();
+                        }
 
     public function fetchMessages(FetchMessagesRequest $request){
         try{
