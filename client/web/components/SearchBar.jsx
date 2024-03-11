@@ -8,7 +8,7 @@ const SearchBar = () => {
   const [results, setResults] = useState([]);
   const searchUser = async (e) => {
     e.preventDefault();
-    const url = "http://localhost:8000/api/search";
+    const url = "http://127.0.0.1:8000/api/search";
     if (search === "") {
       const resp = await axios.post(url, {});
       let searchResults = [];
