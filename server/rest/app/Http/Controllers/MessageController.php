@@ -18,6 +18,30 @@ use Ramsey\Uuid\Uuid;
 
 class MessageController extends Controller
 {
+    public function convertImageToBase64($imagePath){
+        $imageData = file_get_contents($imagePath);
+        $base64Image = base64_encode($imageData);
+        return $base64Image;
+    }
+    
+    // Fetch function
+    public function postToCheckMessage($data){
+        $url = 'http://127.0.0.1/check-message?return_on_any_harmful=false&return_all_results=false';
+        $options = [
+            'http' => [
+                'header'  => "Content-Type: application/json\r\n",
+                'method'  => 'POST',
+                'content' => json_encode($data),
+            ],
+        ];
+        $context  = stream_context_create($options);
+        $result = file_get_contents($url, false, $context);
+        if ($result === false) {
+            return false; // Handle error
+        }
+        return $result;
+    }
+    
     public function storeMessage(CreateMessageRequest $request){
         // edgecase both message and file sent togather
         try{
@@ -34,6 +58,7 @@ class MessageController extends Controller
             if(isset($validated["message_file"])){
                 // save image
                 $image = $request->file('message_file');
+
                 $client = new Client();
                 $response = $client->post();
                 $extension = $image->getClientOriginalExtension();
@@ -49,6 +74,9 @@ class MessageController extends Controller
                 ]);
                 return response()->json(["message" => "Message Stored!","message" => $message]);
             }
+
+            // post {text: "", images: base64(image)}
+            
 
             $message = Message::create([
                 "user_id" => $request->user()->id,
