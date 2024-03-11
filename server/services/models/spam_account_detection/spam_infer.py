@@ -7,6 +7,14 @@ columns_to_standardize = [2,3,4,7,8]
 input = np.array([1.0000e+00, 0.0000e+00, 2.3700e+02, 2.7394e+04, 5.4200e+02,
         0.0000e+00, 0.0000e+00, 8.4280e+00, 1.3660e+03])
 
+spam_test_input = {
+    "features": ['default_profile', 'default_profile_image', 'favourites_count', 'followers_count','friends_count',	'geo_enabled','verified','average_tweets_per_day','account_age_days'],
+    "regular": [1.000e+00, 0.000e+00, 8.433e+03, 5.170e+02, 6.330e+02, 1.000e+00,
+        0.000e+00, 8.890e-01, 1.489e+03],
+    "spam": [1.0000e+00, 0.0000e+00, 2.3700e+02, 2.7394e+04, 5.4200e+02,
+        0.0000e+00, 0.0000e+00, 8.4280e+00, 1.3660e+03]
+}
+
 def spam_forward(input):
     input = np.array([input])
     data_to_transform = input[:,columns_to_standardize]    
@@ -19,4 +27,4 @@ def spam_forward(input):
     
     return spam_pred
     
-print(spam_forward(input))
+print(spam_forward(spam_test_input["spam"]))
