@@ -7,7 +7,7 @@ const GlobalState = (props) => {
   const [userUuid, setUuid] = useState();
   const [email, setEmail] = useState();
   const [token, setToken] = useState();
-  const url = "http://localhost:8000/api/user-data";
+  const url = "http://127.0.0.1:8000/api/user-data";
 
   useEffect(() => {
     getUserData();

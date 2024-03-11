@@ -1,11 +1,41 @@
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
-import axios from "axios";
 import { GlobalContext } from "@/context/GlobalContext";
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 
-const home = () => {
+const fetchData = async () => {
+  try {
+    const url = "http://localhost:8000/api/user-data";
+    const resp1 = await fetch(url);
+    const userData = await resp1.json();
+    const accessToken = userData.access_token;
+
+    const healthCheckResp = await fetch("http://127.0.0.1:8000/api/healthcheck", {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    const healthCheckData = await healthCheckResp.json();
+    console.log({ healthCheckData });
+
+    if (healthCheckResp.status !== 204) {
+      // Redirect logic goes here
+    }
+  } catch (error) {
+    console.log({ error });
+    // Redirect logic goes here
+  }
+};
+
+const Home = () => {
   const { name } = useContext(GlobalContext);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   return (
     <div className="bg-purple-500 h-screen text-white">
       <Navbar />
@@ -14,37 +44,4 @@ const home = () => {
   );
 };
 
-export default home;
-export async function getServerSideProps(context) {
-  try {
-    const url = "http://localhost:8000/api/user-data";
-    const cookie = context.req.cookies.at;
-    const resp1 = await axios.get(url, { headers: { Cookie: `at=${cookie}` } });
-    axios.defaults.headers.common[
-      "Authorization"
-    ] = `Bearer ${resp1.data.access_token}`;
-    const email = resp1.data.email;
-
-    const instance = axios.create({
-      withCredentials: true,
-    });
-    const url2 = "http://localhost:8000/api/isLog";
-    const resp = await instance.post(url2, {});
-    if (resp.status !== 204) {
-      return {
-        redirect: {
-          permanent: false,
-          destination: "/",
-        },
-      };
-    }
-  } catch (error) {
-    return {
-      redirect: {
-        permanent: false,
-        destination: "/",
-      },
-    };
-  }
-  return { props: {} };
-}
+export default Home;

@@ -8,7 +8,7 @@ const Navbar = (props) => {
   const { name } = useContext(GlobalContext);
   const handleLogout = async () => {
     try {
-      const url = "http://localhost:8000/api/logout";
+      const url = "http://127.0.0.1:8000/api/logout";
       const resp = await axios.post(url);
       toast.success("User Logged Out!");
       location.href = "/";
