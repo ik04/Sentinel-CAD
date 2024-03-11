@@ -68,7 +68,7 @@ class MessageController extends Controller
                 throw new RoomNotFoundException(message:"Invalid room uuid, room not found", code:404);
             }
             $roomId = $room->id;
-            $messages = Message::join("users","messages.user_id","=","users.id")->where("room_id",$roomId)->get(["name","message","messages.uuid"]);
+            $messages = Message::join("users","messages.user_id","=","users.id")->where("room_id",$roomId)->get(["name","message","messages.uuid","messages.type"]);
             return response()->json($messages,200);
         }catch(Exception $e){
             return response()->json(["error" => $e->getMessage()],$e->getCode());
