@@ -493,8 +493,8 @@ def extract_frame_path_from_video(video_file: UploadFile) -> list[str]:
 async def extract_frames_from_video(video_file: UploadFile, frame_interval: int, max_frames: int):
     frames_base64 = []
 
-    with open(video_file.filename, "wb") as file_object:
-        file_object.write(f"data/videos/{video_file.file.read()}")
+    with open(f"data/videos/{video_file.filename}", "wb") as file_object:
+        file_object.write(video_file.file.read())
         print("Video saved to disk")
 
     video_cap = cv2.VideoCapture(video_file.filename)
@@ -539,7 +539,7 @@ async def check_video(video_file: UploadFile = File(...), frame_interval: int = 
 
     frames_base64 = frames_base64
 
-    frames_base64[0] = read_txt_data(nsfw="True")
+    # frames_base64[0] = read_txt_data(nsfw="True")
 
     results = []
     now = time.time()   
