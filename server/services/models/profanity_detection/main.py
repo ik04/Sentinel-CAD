@@ -54,6 +54,7 @@ def main():
         print("Received message from RabbitMQ...")
         query_id = message["id"]
         text = message["text"]
+        print("text", text)
 
         sentiment = contains_profanity(text)
         sentiment = sentiment.get("sentiment", [])

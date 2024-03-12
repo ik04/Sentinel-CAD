@@ -10,7 +10,7 @@ RABBITMQ_EXCHANGE = "message_exchange"
 RESULTS_QUEUE = "results_queue"
 SAFE_LINK_API_URL = "https://api.safelink.gg/v1/check"
 
-cache = Cache(ttl=30000)
+cache = Cache(ttl=300000)
 
 
 def extract_links(text):

@@ -54,9 +54,11 @@ class MessageController extends Controller
                     "id" => "string",
                     "image" => $imageContents
                 ];
-               $response = $client->post(env("FASTAPI_SERVER").'/check-message?return_on_any_harmful=false&return_all_results=false',[
+
+               $response = $client->post(env("FASTAPI_SERVER").'/check-message?return_on_any_harmful=any&return_all_results=false',[
                             'json' => $jsonData
                         ]);     
+
                 $data = json_decode($response->getBody(), true);
                 $response = ["services" => [
                     "link_detection" => true,
@@ -84,6 +86,7 @@ class MessageController extends Controller
                 "id" => "string",
                 "image" => true
             ];
+            
            $response = $client->post(env("FASTAPI_SERVER").'/check-message?return_on_any_harmful=false&return_all_results=false',[
                         'json' => $jsonData
                     ]);     

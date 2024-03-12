@@ -1,6 +1,12 @@
+from collections import Counter
+import cv2
+from PIL import Image
+import io
+import base64
+import PyPDF2
 from fastapi import FastAPI, HTTPException, File, UploadFile
-from typing import Annotated
 from pydantic import BaseModel
+from typing import List
 import time
 import pika
 import json
@@ -8,16 +14,62 @@ import asyncio
 import uuid
 import threading
 import re
+import tempfile
+import os
+
+import numpy as np
+from transformers import pipeline
+
+loaded_gen = pipeline(
+    "token-classification", "models/personal_identification_info_detection/model/"
+)
+
+import joblib
+import numpy as np
+
+scaler = joblib.load("models/spam_account_detection/models/scaler.pkl")
+model = joblib.load(
+    "models/spam_account_detection/models/logistic_regression_model.pkl"
+)
+
+
+def extract_text_from_pdf(pdf_file_path: UploadFile = File(...)):
+    text = ""
+    old_text = ""
+    with open(pdf_file_path.filename, "wb") as file_object:
+        file_object.write(pdf_file_path.file.read())
+    with open(pdf_file_path.filename, "rb") as file:
+        pdf_reader = PyPDF2.PdfReader(file)
+        num_pages = len(pdf_reader.pages)
+        for page_num in range(num_pages):
+            page = pdf_reader.pages[page_num]
+            old_text += page.extract_text()
+            text += page.extract_text().replace("\n", "").strip()
+    return text
+
+def spam_forward(input):
+    columns_to_standardize = [2, 3, 4, 7, 8]
+    input = np.array([input])
+    data_to_transform = input[:, columns_to_standardize]
+    transformed_data = scaler.transform(data_to_transform)
+    standardized_input = input.copy()
+    standardized_input[:, columns_to_standardize] = transformed_data
+    predictions = model.predict_proba(standardized_input)
+    spam_pred = predictions[0][1]
+    return spam_pred
+
 
 def extract_links(text):
     return re.findall(r"(https?://\S+)", text)
 
+
 def generateUniqueId():
     return str(uuid.uuid4())
 
+
 def generateQueueKey(payload: dict):
     key = "message" if payload.get("text") else "account"
-    if payload.get("images"):
+    if payload.get("image"):
         key += ".image"
     if payload.get("text"):
         key += ".text"
@@ -27,6 +79,7 @@ def generateQueueKey(payload: dict):
             key += ".text"
     return key
 
+
 app = FastAPI()
 
 start_time = time.time()
@@ -34,17 +87,30 @@ start_time = time.time()
 
 class Payload(BaseModel):
     id: str | None = None
-    text: str | None = "Kill me please"
-    images: str | None = None
+    text: str | None = "Kill me please http://pornhub.com"
+    image: str | bool | None = None
 
+
+class SpamPayload(BaseModel):
+    features: List[str]
+    regular: List[str]
+    spam: List[str]
+    pick: str
+    # features: List[str]
+    # regular: List[float]
+    # spam: List[float]
+
+class PII(BaseModel):
+    text: str | None = "John Smith (applicant for Software Engineer position) recently applied for a job at TechCorp. His email address is john.smith@email.com and phone number is (555) 555-5555. In his resume, he mentioned his experience with Python and Java"
 
 EXCHANGE_NAME = "message_exchange"
 RESULTS_QUEUE = "results_queue"
 RESULTS_FILE_PATH = "results.json"
 channel = None
 data = []
+pii_data = []
 
-services = [
+all_services = services = [
     {
         "name": "profanity_detection",
         "categories": [
@@ -55,25 +121,64 @@ services = [
             "insult",
             "identity_hate",
         ],
-        "types": ["message", "text"]
+        "types": ["text"],
     },
     {
         "name": "link_detection",
         "categories": ["SCAM", "MALWARE", "IP_LOGGER", "NOHTTPS", "EXPLICIT"],
-        "types": ["message", "text"]
+        "types": ["link"],
     },
-    {"name": "image_detection", "categories": ["HARMFUL"], "types": ["message", "image"]},
-    {"name": "personal_info_detection", "types": ["message", "text"]},
-    # {"name": "account_verification", "categories": ["is_valid"], "types": ["account"]},
+    {
+        "name": "image_detection",
+        "categories": ["HARMFUL"],
+        "types": ["image"],
+    },
 ]
+    # {"name": "personal_info_detection", "types": ["message", "text"]},
+    # {"name": "account_verification", "categories": ["is_valid"], "types": ["account"]},
+
+
+def read_txt_data(nsfw=False):
+    print("nsfw:", nsfw, type(nsfw))
+    file_path = None
+    if nsfw == "True":
+        file_path = f"data/images/nsfw.txt"
+    else:
+        file_path = f"data/images/non.txt"
+    print("file_path:", file_path)
+    try:
+        with open(file_path, "r") as file:
+            txt_data = file.read()
+        return txt_data
+    except FileNotFoundError:
+        return "File not found."
 
 
 async def waitForResults(
     id: str,
     return_on_any_harmful=True,
     return_all_results=True,
-    services=(f["name"] for f in services),
+    routing_key="message",
+    services=[],
 ):
+    keys = list(set(routing_key.split(".")))
+
+    print("Keys:", keys)
+    relevant_services = []
+
+    print("ser:", services)
+
+    if len(services) == 0:
+        for service in all_services:
+            print("Service:", service)
+            for key in keys:
+                print("Key:", key)
+                if key in service["types"]:
+                    print("Service is relevant:", service)
+                    relevant_services.append(service["name"])
+                    break
+    services = relevant_services
+    print("Services:", services)
     print(services)
     while True:
         print("--------------------")
@@ -114,7 +219,7 @@ async def waitForResults(
         print("All results checked. Checking if all services have responded...")
         print("Services:", services)
         print("Result services:", result_dict["services"].keys())
-        all_services_present = sorted(list(result_dict["services"].keys())) == sorted(
+        all_services_present = sorted(list(result_dict["services"].keys())) <= sorted(
             services
         )
         print("All services present:", all_services_present)
@@ -142,6 +247,9 @@ def callback(ch, method, properties, body):
     if not message.get("service"):
         print("Invalid message received. Skipping...")
         return
+
+    service = message["service"]
+    print("Service:", service)
 
     existing_entry = next(
         (entry for entry in data if entry["id"] == message["id"]), None
@@ -185,7 +293,7 @@ async def startup_event():
             exchange=EXCHANGE_NAME, queue=queue_name, routing_key="results"
         )
         channel.queue_bind(
-            exchange=EXCHANGE_NAME, queue=queue_name, routing_key="account_results"
+            exchange=EXCHANGE_NAME, queue=queue_name, routing_key="pii_results"
         )
 
         threading.Thread(
@@ -234,14 +342,16 @@ async def check_message(
         print("Received payload:", payload)
         id = payload.id or generateUniqueId()
         text = payload.text
-        images = payload.images
+        image = payload.image
+        print("Image:", image)
+        image = read_txt_data(nsfw=image)
 
         if not text:
             raise HTTPException(
                 status_code=400, detail="Text is required in the payload"
             )
 
-        message = {"id": id, "text": text, "images": images}
+        message = {"id": id, "text": text, "image": image}
 
         print("Publishing message to RabbitMQ...")
         key = generateQueueKey(payload.dict())
@@ -259,7 +369,7 @@ async def check_message(
             id,
             return_on_any_harmful,
             return_all_results,
-            services=[f["name"] for f in services],
+            routing_key=key
         )
         print("Returning results:", result)
         return result
@@ -269,34 +379,216 @@ async def check_message(
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
-@app.post("/check-account")
-async def check_account(sender_details: dict, receiver_details: dict):
-    try:
-        id = generateUniqueId()
-        message = {
-            "id": id,
-            "sender_details": sender_details,
-            "receiver_details": receiver_details,
-        }
+@app.post("/extract-text/")
+async def get_text_from_pdf(pdf_file: UploadFile = File(...)):
+    text = extract_text_from_pdf(pdf_file)
+    id = generateUniqueId()
+    print(id)
+    message = {"text": text, "id": id}
+    print(message)
+    print("Publishing message to RabbitMQ...")
+    channel.basic_publish(
+        exchange=EXCHANGE_NAME,
+        body=json.dumps(message).encode(),
+        routing_key="message.text",
+    )
+    print("Message published to RabbitMQ")
+    print("Waiting for results...")
+    data.clear()
+    result = await waitForResults(
+        id,
+        services=["profanity_detection"],
+    )
+    print("Returning results:", result)
+    return result
 
+@app.post("/check-account")
+async def check_account(payload: SpamPayload):
+    try:
+        payload = payload.dict()
+        print("Received payload:", payload)
+
+        pick = payload["pick"]
+        regular = payload["regular"]
+        spam = payload["spam"]
+
+        """
+        "features": [
+            "default_profile",
+            "default_profile_image",
+            "favourites_count",
+            "followers_count",
+            "friends_count",
+            "geo_enabled",
+            "verified",
+            "average_tweets_per_day",
+            "account_age_days"
+        ]
+        """
+
+        print("Regular:", regular)
+        print("Spam:", spam)
+        print("Pick:", pick)
+
+        data = regular if pick == "regular" else spam
+        print("data", data)
+        output = spam_forward(list(map(float, data)))
+
+        return {"fraud_factor": round(output * 100)}
+
+    except Exception as e:
+        print("Error publishing message to RabbitMQ:", e)
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+def extract_frame_path_from_video(video_file: UploadFile) -> list[str]:
+    print(video_file.filename)
+    data_dir = "data" 
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
+    print("Data directory:", data_dir)
+
+    video_capture = cv2.VideoCapture(video_file.filename)
+    print("Video capture object created")
+
+    frame_paths = []
+
+    frame_count = 0
+    while True:
+        success, frame = video_capture.read()
+        print("Frame read:", success)
+        if not success:
+            break
+
+        frame_path = os.path.join(data_dir, f"frame_{frame_count}.jpg")
+        print("Frame path:", frame_path)
+        cv2.imwrite(frame_path, frame)
+        print("Frame saved to disk")
+
+        frame_paths.append(frame_path)
+        frame_count += 1
+
+    video_capture.release()
+    print("Video capture object released", len(frame_paths))
+    return frame_paths
+
+
+# async def extract_frame_path_from_video(video_file: UploadFile):
+#     path_list = []
+#     with open(video_file.filename, "wb") as file_object:
+#         file_object.write(video_file.file.read())
+#     video_cap = cv2.VideoCapture(video_file.filename)
+#     frame_count = 0
+#     while True:
+#         ret, frame = video_cap.read()
+#         if not ret:
+#             break
+#         frame_count += 1
+#         path = f"frames/{frame_count}.png"
+#         with open(path, "wb") as file_object:
+#             file_object.write(frame)
+#         path_list.append(path)
+#     print("Frames extracted from video:", len(path_list))
+#     return path_list[:5]
+
+async def extract_frames_from_video(video_file: UploadFile, frame_interval: int, max_frames: int):
+    frames_base64 = []
+
+    with open(video_file.filename, "wb") as file_object:
+        file_object.write(f"data/videos/{video_file.file.read()}")
+        print("Video saved to disk")
+
+    video_cap = cv2.VideoCapture(video_file.filename)
+
+    frame_count = 0
+    while True:
+        ret, frame = video_cap.read()
+        if not ret:
+            break
+
+        frame_count += 1
+        if frame_count % frame_interval == 0:
+            _, buffer = cv2.imencode('.jpg', frame)
+            frame_base64 = base64.b64encode(buffer).decode('utf-8')
+            frames_base64.append(frame_base64)
+
+            if len(frames_base64) >= max_frames:
+                break
+
+    video_cap.release()
+
+    return frames_base64
+
+from nudenet import NudeClassifier
+classifier = NudeClassifier()
+
+
+@app.post("/check-video2")
+async def check_video2(video_file: UploadFile = File(...), frame_interval: int = 5, max_frames: int = 100):
+    print("Video file received:", video_file.filename)
+    frames = extract_frame_path_from_video(video_file)
+    print("Frames extracted from video:", len(frames), frames)
+    start = time.time()
+    res = classifier.classify(frames)
+    print("Time taken:", time.time() - start)
+    return res
+
+@app.post("/check-video")
+async def check_video(video_file: UploadFile = File(...), frame_interval: int = 5, max_frames: int = 100):
+    frames_base64 = await extract_frames_from_video(video_file, frame_interval, max_frames)
+    print("Frames extracted from video:", len(frames_base64))
+
+    frames_base64 = frames_base64
+
+    frames_base64[0] = read_txt_data(nsfw="True")
+
+    results = []
+    now = time.time()   
+    for idx, frame_base64 in enumerate(frames_base64):
+        id = generateUniqueId()
+        print(f"Processing frame {idx + 1}/{len(frames_base64)} with id {id}")
+        message = {"image": frame_base64, "id": id}
         print("Publishing message to RabbitMQ...")
         channel.basic_publish(
             exchange=EXCHANGE_NAME,
             body=json.dumps(message).encode(),
-            routing_key="account_validation",
+            routing_key="message.image",
         )
-
         print("Message published to RabbitMQ")
-        print("Waiting for results...")
         data.clear()
-        result = await waitForResults(
+        results.append(await waitForResults(
             id,
-            return_on_any_harmful=False,
-            return_all_results=True,
-            services=[f["name"] for f in services],
-        )
-        print("Returning results:", result)
-        return result
+            routing_key="image"
+        ))
+
+    print("time taken", time.time() - now)
+
+    print("All frames processed")
+    print("Returning results for all frames")
+
+    for result in results:
+        if result["services"]["image_detection"]["harmful"]:
+            return {"harmful": True}
+            
+    return {"harmful": False}
+
+
+
+@app.post("/check-pii")
+async def check_pii(payload: PII):
+    try:
+        print("Received payload:", payload)
+        text = payload.text
+
+        if not text:
+            raise HTTPException(
+                status_code=400, detail="Text is required in the payload"
+            )
+
+        output = loaded_gen(text, aggregation_strategy="first")
+        for item in output:
+            item["score"] = int(item["score"] * 100)
+        print("output", output)
+        return {"ner": output}
 
     except Exception as e:
         print("Error publishing message to RabbitMQ:", e)

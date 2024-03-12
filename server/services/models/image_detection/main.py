@@ -30,7 +30,7 @@ def check_image_harmful(image_path):
 
         print("Predicted label:", predicted_label)
         print(model.config.id2label[predicted_label])
-        return False if model.config.id2label[predicted_label] == "neutral" else True
+        return False if model.config.id2label[predicted_label] == "normal" else True
     except Exception as e:
         print(f"Error processing image: {e}")
         return False
@@ -70,7 +70,7 @@ def main():
         message = json.loads(body)
         print(message)
         query_id = message["id"]
-        image_base64 = message["images"]
+        image_base64 = message["image"]
 
         print("Converting base64 image to file...")
         image_path = save_image_from_base64(image_base64, query_id)
@@ -82,6 +82,7 @@ def main():
         print(f"Image path: {image_path}")
 
         harmful = check_image_harmful(image_path)
+        print(f"Image is harmful: {harmful}")
 
         print("Publishing results to RabbitMQ...")
         channel.basic_publish(

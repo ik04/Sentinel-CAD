@@ -6,11 +6,12 @@ import os
 import base64
 from PIL import Image
 
-loaded_gen = pipeline("token-classification", 'model')
+loaded_gen = pipeline("token-classification", "model/")
 
 RABBITMQ_HOST = "localhost"
 RABBITMQ_EXCHANGE = "message_exchange"
 RESULTS_QUEUE = "results_queue"
+
 
 def main():
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
@@ -22,7 +23,7 @@ def main():
     queue_name = result.method.queue
 
     channel.queue_bind(
-        exchange=RABBITMQ_EXCHANGE, queue=queue_name, routing_key="#.text.#"
+        exchange=RABBITMQ_EXCHANGE, queue=queue_name, routing_key="#.pii.#"
     )
 
     def callback(ch, method, properties, body):
@@ -34,12 +35,12 @@ def main():
 
         output = loaded_gen(text, aggregation_strategy="first")
         for item in output:
-            item['score'] = int(item['score'] * 100)
+            item["score"] = int(item["score"] * 100)
         print("output", output)
         print("Publishing results to RabbitMQ...")
         channel.basic_publish(
             exchange=RABBITMQ_EXCHANGE,
-            routing_key="results",
+            routing_key="pii_results",
             body=json.dumps(
                 {
                     "id": query_id,
