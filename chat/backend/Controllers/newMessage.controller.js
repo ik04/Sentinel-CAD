@@ -29,7 +29,14 @@ const penalties = {
 
 const BLOCK_CREDIT = 0.2;
 
-const IGNORED_PIIS = ["FIRSTNAME", "URL", "DATE", "TIME"];
+const IGNORED_PIIS = [
+  "FIRSTNAME",
+  "LASTNAME",
+  "MIDDLENAME",
+  "URL",
+  "DATE",
+  "TIME",
+];
 
 const newMessageController = async (req, res) => {
   const { recieverID } = req.params;
