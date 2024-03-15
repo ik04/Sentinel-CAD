@@ -21,6 +21,8 @@ const appealController = async (req, res) => {
     (violation) => violation._id.toString() == violationID
   );
 
+  console.log({ violation });
+
   let text = `
   Forget the previous violations of the user and start from scratch
 
@@ -36,7 +38,7 @@ const appealController = async (req, res) => {
   if (violations.length > 0) {
     text += `
     For your reference, here are the past violations for this user (be more lenient towards people with a low number of violations):
-    ${v
+    ${violations
       .map(
         (v) => `
       - Violation ID: ${v._id}
@@ -57,7 +59,7 @@ const appealController = async (req, res) => {
     "message": "User can be unbanned" or "User should remain banned" (message to indicate the decision)
     "reason": "The reason for the decision" (required)
   }
-  Please consider being more lenient on users with fewer violations (3-4 violations) no matter what.
+  Please consider being more lenient on users with fewer violations no matter what.
 `;
 
   text += `  Please review the violation and let us know if the user can be unbanned.
