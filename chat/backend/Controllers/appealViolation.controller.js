@@ -2,6 +2,8 @@ import fetch from "node-fetch";
 import Violation from "../models/violations.js";
 import mongoose from "mongoose";
 
+const { GEMINI_KEY } = process.env;
+
 const appealController = async (req, res) => {
   const { violationID } = req.params;
   const { appealMessage, userId } = req.body;
@@ -109,7 +111,7 @@ The user has also sent an appeal message with the appeal request:
     };
 
     const geminiResponse = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyASdXeMxOF1cWuvsDmURWo94IiBTnq5hWY",
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_KEY}`,
       {
         method: "POST",
         headers: {
