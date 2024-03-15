@@ -3,3 +3,10 @@ test.js
 test
 *.pt
 *.safetensors
+*.png
+*.webp
+*.jpg
+*.jpeg
+*.mp4
+*.pdf
+*.env

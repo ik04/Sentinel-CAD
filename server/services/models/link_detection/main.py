@@ -78,6 +78,12 @@ def main():
         print("harmful", harmful)
 
         print("Publishing results to RabbitMQ...")
+
+        print("safety_results", safety_results)
+        categories = [item.get("flags") for item in safety_results["data"]] 
+        categories = [flag for sublist in categories for flag in sublist]
+
+        print("categories", categories)
         channel.basic_publish(
             exchange=RABBITMQ_EXCHANGE,
             routing_key="results",
@@ -85,7 +91,7 @@ def main():
                 {
                     "id": query_id,
                     "service": "link_detection",
-                    "results": {"safety": safety_results, "harmful": harmful},
+                    "results": {"safety": safety_results, "harmful": harmful, "categories": categories},
                 }
             ),
         )

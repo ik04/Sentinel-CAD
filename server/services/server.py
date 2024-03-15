@@ -178,8 +178,7 @@ async def waitForResults(
                     relevant_services.append(service["name"])
                     break
     services = relevant_services
-    print("Services:", services)
-    print(services)
+    print("Services-o:", services)
     while True:
         print("--------------------")
         print("DATA::::")
@@ -344,7 +343,7 @@ async def check_message(
         text = payload.text
         image = payload.image
         print("Image:", image)
-        image = read_txt_data(nsfw=image)
+        # image = read_txt_data(nsfw=image)
 
         if not text:
             raise HTTPException(
@@ -440,36 +439,35 @@ async def check_account(payload: SpamPayload):
         print("Error publishing message to RabbitMQ:", e)
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
-def extract_frame_path_from_video(video_file: UploadFile) -> list[str]:
+from typing import List
+from fastapi import UploadFile
+import os
+from moviepy.editor import VideoFileClip
+
+def extract_frame_path_from_video(video_file: UploadFile) -> List[str]:
     print(video_file.filename)
     data_dir = "data" 
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
     print("Data directory:", data_dir)
 
-    video_capture = cv2.VideoCapture(video_file.filename)
-    print("Video capture object created")
+    video_path = os.path.join(data_dir, video_file.filename)
+    with open(video_path, "wb") as buffer:
+        buffer.write(video_file.file.read())
 
+    clip = VideoFileClip(video_path)
     frame_paths = []
 
-    frame_count = 0
-    while True:
-        success, frame = video_capture.read()
-        print("Frame read:", success)
-        if not success:
-            break
-
-        frame_path = os.path.join(data_dir, f"frame_{frame_count}.jpg")
-        print("Frame path:", frame_path)
-        cv2.imwrite(frame_path, frame)
-        print("Frame saved to disk")
-
+    for i, frame in enumerate(clip.iter_frames()):
+        frame_path = os.path.join(data_dir, f"frame_{i}.jpg")
+        frame.save(frame_path)
         frame_paths.append(frame_path)
-        frame_count += 1
 
-    video_capture.release()
-    print("Video capture object released", len(frame_paths))
+    print("Frames extracted:", len(frame_paths))
     return frame_paths
+
+
+
 
 
 # async def extract_frame_path_from_video(video_file: UploadFile):
@@ -533,7 +531,7 @@ async def check_video2(video_file: UploadFile = File(...), frame_interval: int =
     return res
 
 @app.post("/check-video")
-async def check_video(video_file: UploadFile = File(...), frame_interval: int = 5, max_frames: int = 100):
+async def check_video(video_file: UploadFile = File(...), frame_interval: int = 1, max_frames: int = 100):
     frames_base64 = await extract_frames_from_video(video_file, frame_interval, max_frames)
     print("Frames extracted from video:", len(frames_base64))
 
@@ -583,7 +581,8 @@ async def check_pii(payload: PII):
             raise HTTPException(
                 status_code=400, detail="Text is required in the payload"
             )
-
+        
+        print("Text:", text)
         output = loaded_gen(text, aggregation_strategy="first")
         for item in output:
             item["score"] = int(item["score"] * 100)
@@ -591,5 +590,5 @@ async def check_pii(payload: PII):
         return {"ner": output}
 
     except Exception as e:
-        print("Error publishing message to RabbitMQ:", e)
+        print("Error:", e)
         raise HTTPException(status_code=500, detail="Internal Server Error")

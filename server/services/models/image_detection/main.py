@@ -92,7 +92,7 @@ def main():
                 {
                     "id": query_id,
                     "service": "image_detection",
-                    "results": {"harmful": harmful},
+                    "results": {"harmful": harmful, "categories": ["NSFW"]},
                 }
             ),
         )

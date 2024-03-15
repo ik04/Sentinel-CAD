@@ -68,7 +68,7 @@ def main():
                 {
                     "id": query_id,
                     "service": "profanity_detection",
-                    "results": {"sentiment": sentiment, "harmful": len(sentiment) > 0},
+                    "results": {"categories": sentiment, "harmful": len(sentiment) > 0},
                 }
             ),
         )
